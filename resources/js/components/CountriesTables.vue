@@ -32,7 +32,9 @@
             </template>
           </td>
           <td><img :src="country.flags.png" alt="flag" width="50"></td>
-          <td><input type="checkbox" v-model="country.favorite" @change="toggleFavorite(country)" /></td>
+          <td>
+            <input type="checkbox" :checked="country.favorite" @change="toggleFavorite(country)" />
+          </td>
         </tr>
       </tbody>
     </table>
@@ -62,7 +64,6 @@ export default {
   },
   created() {
     this.fetchCountries();
-    this.loadFavorites();
   },
   computed: {
     sortedCountries() {
@@ -89,6 +90,8 @@ export default {
         const response = await axios.get('https://restcountries.com/v3.1/all');
         this.countries = response.data;
         this.filteredCountries = this.countries;
+        this.loadFavorites();
+        this.applyFavorites();
       } catch (error) {
         console.error('Error fetching countries:', error);
       }
@@ -112,22 +115,21 @@ export default {
       }
     },
     toggleFavorite(country) {
-      if (country.favorite) {
-        this.favorites.push(country.cca3);
-      } else {
-        const index = this.favorites.indexOf(country.cca3);
-        if (index !== -1) {
-          this.favorites.splice(index, 1);
-        }
-      }
-      localStorage.setItem('favorites', JSON.stringify(this.favorites));
+      country.favorite = !country.favorite;
+      this.saveFavorites();
     },
     loadFavorites() {
       const savedFavorites = localStorage.getItem('favorites');
       this.favorites = savedFavorites ? JSON.parse(savedFavorites) : [];
+    },
+    applyFavorites() {
       this.countries.forEach(country => {
         country.favorite = this.favorites.includes(country.cca3);
       });
+    },
+    saveFavorites() {
+      this.favorites = this.countries.filter(country => country.favorite).map(country => country.cca3);
+      localStorage.setItem('favorites', JSON.stringify(this.favorites));
     },
     getHighlightedParts(text) {
       const parts = [];
@@ -136,7 +138,7 @@ export default {
         return parts;
       }
 
-      const searchTermRegex = new RegExp(`(${this.search})`, 'gi');
+      const searchTermRegex = new RegExp(`(${this.escapeRegExp(this.search)})`, 'gi');
       let match;
       let lastIndex = 0;
 
@@ -156,6 +158,9 @@ export default {
       }
 
       return parts;
+    },
+    escapeRegExp(string) {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
   }
 };
@@ -176,5 +181,9 @@ th, td {
 img {
   display: block;
   margin: 0 auto;
+}
+
+.highlighted {
+  background-color: yellow;
 }
 </style>
